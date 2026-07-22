@@ -1,4 +1,4 @@
 interface:
   display_name: "Agent SDLC Workflow"
-  short_description: "双模式、四阶段引导与 Goal/Auto 长程执行的软件工程工作流"
-  default_prompt: "Use $agent-sdlc-workflow to guide this project through the lightest suitable process and hand an approved plan to autonomous execution."
+  short_description: "四阶段引导、分层验证与低打扰 Auto 执行的软件工程工作流"
+  default_prompt: "Use $agent-sdlc-workflow to guide this project with focused checks, phase-level regression, and one final release gate."

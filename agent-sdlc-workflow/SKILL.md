@@ -1,13 +1,13 @@
 ---
 name: agent-sdlc-workflow
-description: 用双模式 Agent SDLC 组织软件开发：小任务走轻量 fast-track；完整产品项目由 Agent 主动引导四阶段 Project Mode（需求深挖、五维建模与原型 → SDD/TDD/Review/ADR/验收与部署闭环 → Phase/任务/退出门控 → Goal/Auto 长程执行与验收）。用于新产品、长期跨会话、多里程碑、多 Agent 或需要先 copilot 立法再 auto 执行的项目。普通一次性修复或代码解释不要自动触发，除非用户明确要求。
+description: 用双模式 Agent SDLC 组织软件开发：小任务走轻量 fast-track；完整产品项目由 Agent 主动引导四阶段 Project Mode，并用局部验证、Phase 回归和最终发布门控平衡效率与质量。覆盖需求深挖、五维建模与原型、SDD/风险驱动测试/Review/ADR、Phase/Todo/退出门控和 Goal/Auto 长程执行。用于新产品、长期跨会话、多里程碑或多 Agent 项目；普通一次性修复不要自动触发完整流程。
 ---
 
 # Agent SDLC
 
 ## 选择最轻的充分流程
 
-- **Fast-track**：单次修复、小功能、临时原型。直接从用户请求提炼 AC，做最小计划、实现并验证；不为模板制造文件。
+- **Fast-track**：单次修复、小功能、临时原型。直接提炼 AC，做最小计划和局部验证；只有风险触发时才扩大回归，不为模板制造文件。
 - **Project Mode**：完整产品、多里程碑、长期跨会话、多 Agent 或用户要求长程 auto。按下述四阶段主动引导。
 
 先读已有 `CONSTITUTION.md`、`AGENTS.md`、`NOTES.md`、`specs/` 和 `plans/`。持久项目可运行 `python scripts/init_project.py <项目根目录> --dry-run`，确认后去掉 `--dry-run`。阶段可以迭代交织；默认在前三阶段形成足够清晰的产品、闭环和计划，再集中确认并切换 auto。若已有等价产物，直接复用，不机械补流程。
@@ -30,20 +30,29 @@ description: 用双模式 Agent SDLC 组织软件开发：小任务走轻量 fas
 读取 `assets/templates/phase0-constitution.md` 和 `phase2-env-gates.md`。Agent 根据项目主动推荐工程基线，而不是等待用户逐项指定：
 
 - SDD/spec-first；
-- TDD 或适合该风险的测试先行方式；
+- TDD、局部失败证据或适合该风险的测试先行方式；
 - 至少一轮独立代码 review；
 - 有真实取舍的决策由 Agent 给出推荐、备选和理由，并落 ADR；
-- Web 产品优先 Playwright 自动验收，其他项目推荐等价的端到端验收器；
+- Web 关键路径优先 Playwright，其他项目推荐等价的边界验收；
 - 可重复的本地启动/部署、测试、构建和自证命令。
 
 这些是推荐项，不是一刀切硬编码。对每项给出“采用 / 调整 / 不适用 + 理由”，不要静默跳过。用最小工程 canary 干跑 `修改 → 验证 → 本地部署/运行 → 自证`，确认 Agent 能独立闭环；canary 可以只是骨架或探针，不要求提前实现产品功能。
+
+### 验证节奏：逐级放大
+
+- **迭代中**：只跑改动附近的单元、类型、lint 或最短行为验证；形成一个连贯改动后再验证，不在每次编辑后全量回测。
+- **任务/批次结束**：运行受影响模块和最近边界的相关回归。
+- **Phase 退出**：运行该 Phase 涉及的集成测试、共享契约检查和关键路径 E2E。
+- **Goal 完成**：确保最后一次代码变化后已有完整测试、构建或发布级绿色证据；若上一层命令已经等同或覆盖最终门控，直接复用，不重复运行。
+
+修改共享契约、schema、权限、安全、依赖、全局配置、并发、迁移或基础设施时，提前升级验证范围。若验证输入和代码未变化，可复用最近绿色证据；不要重复运行无法产生新信息的同一检查。
 
 ### 3. Planning：Phase、Todo 与退出门控
 
 读取 `assets/templates/phase3-phase-planning.md`：
 
 1. 按端到端可验证增量划分 Phase，高风险和高不确定项前置。
-2. 细化为可独立执行的任务清单；每项关联 AC、依赖、验证和完成信号。
+2. 细化为可独立执行的任务清单；每项关联 AC、依赖、局部验证、回归升级条件和完成信号。
 3. 为每个 Phase 写自动化退出门控，形成无环依赖和可并行任务。
 4. Agent 提交完整计划供人确认目标、范围、关键取舍和门控，并明确交接状态：只有计划完成时为 `Plan-ready`；环境反馈闭环也已实测时才为 `Auto-ready`。
 
@@ -53,7 +62,7 @@ description: 用双模式 Agent SDLC 组织软件开发：小任务走轻量 fas
 
 读取 `assets/templates/phase4-execution-protocol.md` 和 `phase5-acceptance-retro.md`。把已确认的 Todo、AC 和 Phase 门控作为一个完整 goal：
 
-- 自动领取依赖已满足的下一任务，实施、验证、记录必要 checkpoint，然后继续；
+- 自动领取依赖已满足的下一任务，实施并做局部验证；在任务、Phase 和 Goal 边界按层级扩大回归，然后继续；
 - 通过一个 Phase 的退出门控后进入下一 Phase，不等待例行批准；
 - 当前 goal 内所需仓库文件可直接修改，不做逐文件审批或白名单；
 - 实现发现规格错误时只暂停受影响路径，走 spec delta，再恢复执行；
@@ -79,7 +88,7 @@ description: 用双模式 Agent SDLC 组织软件开发：小任务走轻量 fas
 
 ## 完成判据
 
-- 承诺 AC 有可复现证据，人工体验验收被明确标出；
+- 承诺 AC 有可复现证据，最后一次代码变化后的完整/发布级门控通过或有等价绿色证据，人工体验验收被明确标出；
 - Todo 完成且所有 Phase 退出门控通过；
 - spec、实现、测试和关键 ADR 一致；
 - 未解决事项有明确处置；只沉淀真正可复用的经验。
