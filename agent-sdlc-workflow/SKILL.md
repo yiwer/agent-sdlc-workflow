@@ -1,94 +1,70 @@
 ---
 name: agent-sdlc-workflow
-description: 用双模式 Agent SDLC 组织软件开发：小任务走轻量 fast-track；完整产品项目由 Agent 主动引导四阶段 Project Mode，并用局部验证、Phase 回归和最终发布门控平衡效率与质量。覆盖需求深挖、五维建模与原型、SDD/风险驱动测试/Review/ADR、Phase/Todo/退出门控和 Goal/Auto 长程执行。用于新产品、长期跨会话、多里程碑或多 Agent 项目；普通一次性修复不要自动触发完整流程。
+description: 用双模式 Agent SDLC 组织软件开发。小任务走零落盘 fast-track；完整产品项目由 Agent 主动引导四阶段 Project Mode。以四维正交配置（规模/自主/风险/并发）取代二元路由，用 Harness 能力契约决定可达自主程度，用 A0–A3/J0–J1 证据保证等级区分自证、机器捕获、独立复核与外部硬门控，并以生命周期状态机诚实报告进度。覆盖需求深挖、五维建模与原型、SDD/风险驱动测试/Review/ADR、Phase/Todo/退出门控、再锚定/熔断/分层恢复与 Goal/Auto 长程执行。用于新产品、长期跨会话、多里程碑或多 Agent 项目；普通一次性修复不自动触发完整流程。
 ---
 
 # Agent SDLC
 
-## 选择最轻的充分流程
+## 本 skill 的约束性质（先读这段）
 
-- **Fast-track**：单次修复、小功能、临时原型。直接提炼 AC，做最小计划和局部验证；只有风险触发时才扩大回归，不为模板制造文件。
-- **Project Mode**：完整产品、多里程碑、长期跨会话、多 Agent 或用户要求长程 auto。按下述四阶段主动引导。
+这是**行为编排协议，不是硬控制系统**（`RULE-HARD-001`）。Skill 文字只能改变 Agent 行为倾向，不能提供权限隔离、CI 阻断、分支保护、生产审批、数据恢复、原子调度或独立证据作者——这些由 Harness、CI、权限系统与版本控制承担。凡能交给它们强制的，不靠本 skill 自律。
 
-先读已有 `CONSTITUTION.md`、`AGENTS.md`、`NOTES.md`、`specs/` 和 `plans/`。持久项目可运行 `python scripts/init_project.py <项目根目录> --dry-run`，确认后去掉 `--dry-run`。阶段可以迭代交织；默认在前三阶段形成足够清晰的产品、闭环和计划，再集中确认并切换 auto。若已有等价产物，直接复用，不机械补流程。
+「门控」分三类，不得混淆：
+
+- **hard**：由 CI/权限/分支保护/部署审批真实阻断，本 skill 只引用其结果（A3）；
+- **evidence**：Agent 可执行，但必须留下绑定 revision 的原始结果，并按保证等级标注（A0–A2）；
+- **judgment**：确需人签字（体验/业务/风险判断），显式标 J0/J1，不以自证代替。
+
+## 核心命题
+
+- **验证质量决定自主权**（`RULE-AUT-001`）：自主程度不由提示词长度决定，而由可用能力与证据保证等级决定。能力或证据不足时降级，不用散文伪装能力已存在。
+- **`Plan-ready` ≠ `Auto-ready`**：有计划只代表可审阅；只有本地反馈闭环与工程 canary 实测、且证据捕获能力就位后，才代表可长程自治。
+
+## 选择最轻的充分流程（四维判定，RULE-MODE-001 / RULE-FAST-001）
+
+保留 fast-track / Project Mode 作为用户界面，内部用四个正交维度分别判定：
+
+| 维度 | 取值 | 判据 |
+|---|---|---|
+| 交付规模 | `fast` / `project` | 单一可验证增量且单会话可完成→fast；多可发布增量、跨会话或需持续计划/DAG→project |
+| 自主程度 | `copilot` / `auto` | 产品语义/风险/验证能力仍需人→copilot；spec、计划、canary、证据捕获与恢复入口均已验证→auto |
+| 风险 | `standard` / `guarded` | 可逆局部无生产/真实数据/权限影响→standard；生产/真实数据/迁移/权限/安全/付费/难恢复→guarded |
+| 协作 | `single` / `multi` | 一个写入者→single；两个及以上并发写入者→multi |
+
+**AC 数量、用户要求 auto、使用多 Agent、单点高风险操作，均不单独决定 Project**——它们分别影响自主、并发、风险维度。先读已有 `CONSTITUTION.md`、`AGENTS.md`、`NOTES.md`、`specs/`、`plans/`；已有等价产物直接复用，不机械补流程。
+
+## 读取顺序
+
+- 路由与四阶段编排：本文件。
+- 完整行为规则（唯一创作源）：`references/core-rules.md`。
+- 证据保证等级与记录：`references/evidence-assurance.md`。
+- 能力协商与降级：`references/capability-contract.md`。
+- 分层恢复：`references/recovery-model.md`。
+- 具体平台落地：`references/bindings/<harness>.md`（无对应 binding 时用 `generic.md` 并降级）。
+
+持久项目可运行 `python <本 skill 目录>/scripts/init_project.py <项目根> --dry-run`，确认后去掉 `--dry-run`。阶段可迭代交织；默认在前三阶段形成足够清晰的产品、闭环与计划，再集中确认并切换 auto。
 
 ## Project Mode：四阶段
 
-前三阶段使用 copilot：Agent 先调查、给出草案和推荐，人确认产品语义与关键取舍。不要让用户从空白模板开始填。第四阶段切换 auto：把已确认的计划视为完整 goal，连续执行到门控全部通过。
+前三阶段 copilot：Agent 先调查、给草案与推荐，人确认产品语义与关键取舍，不让用户从空白模板填写。第四阶段切 auto：把已确认计划视为完整 goal，连续执行到门控全部通过。
 
-### 1. Preparation：需求、五维模型与原型
+1. **Preparation**（读 `assets/templates/phase1-spec-modeling.md`）：深挖用户/场景/价值/非目标/假设/边界；五维建模（对象/行为/事件/关系/规则，允许 N/A 但须经判断，`RULE-MIN-001`）；选最低成本原型回答当前不确定性；问题回填模型与编号 AC；阶段末集中确认。
+2. **Environment**（读 `phase0-constitution.md` + `phase2-env-gates.md`）：推荐工程基线（SDD/测试先行/独立 Review/ADR/边界验收/本地闭环）；**能力协商**形成 capabilities 结论（`references/capability-contract.md`）；用最小 canary 干跑「改→验→本地运行→自证」。
+3. **Planning**（读 `phase3-phase-planning.md`）：按端到端可验证增量分 Phase，高风险前置；细化任务卡（关联 AC/依赖/局部验证/升级条件/完成信号）；写自动退出门控与无环 DAG；声明 `Plan-ready`/`Auto-ready`——**Auto-ready 要求 `evidence_capture` 至少为 tool（A1）**。
+4. **Goal Execution**（读 `phase4-execution-protocol.md` + `phase5-acceptance-retro.md`）：把 Todo/AC/门控作为一个 goal 连续执行；按层级扩大回归；**每个 Phase 门控后再锚定**（`RULE-ANCHOR-001`）；熔断入 `auto_paused`（`RULE-BREAK-001`）；三类恢复分离（`RULE-REC-001`）；完成后按生命周期状态机如实报告（`RULE-STATE-001`）。
 
-读取 `assets/templates/phase1-spec-modeling.md`，主动推进：
+## 验证节奏（RULE-VAL-001，行动点摘要）
 
-1. 深挖用户、场景、价值、成功表现、非目标、假设和边界条件。
-2. 从需求收敛产品定位；对核心实体检查五个维度：对象、行为、事件、关系、规则。允许不适用，但要经过判断，不能静默遗漏。
-3. 模型稳定后选择能回答当前不确定性的最低成本原型：流程表、状态图或静态线框通常已足够；只有必须验证真实交互时才制作可运行原型。用它检查功能表达、流程完整性和必要的视觉方向。
-4. 把原型暴露的问题回填模型和编号 AC；在阶段末集中请人确认核心流程、功能表达和当前必须决定的体验方向。视觉精修可明确延期，避免逐项打断。
+局部→受影响→Phase→Goal 逐级扩大；连贯改动后跑最短局部检查，不每次编辑后全量回测；共享契约/schema/权限/安全/依赖/全局配置/并发/迁移/基础设施变化或影响面扩大时提前升级；输入未变复用最近绿色证据。完整语义见 `references/core-rules.md`；本项目各级命令见 `CONSTITUTION.md`。
 
-### 2. Environment：工程纪律与闭环
+## 用户介入边界（RULE-USER-001）
 
-读取 `assets/templates/phase0-constitution.md` 和 `phase2-env-gates.md`。Agent 根据项目主动推荐工程基线，而不是等待用户逐项指定：
+仅当目标/非目标/AC 必变、需新外部授权/付费/生产或真实数据、操作破坏性难恢复或越权，且无其他安全任务可继续时，才合并询问。普通失败、漏列文件（`RULE-SCOPE-001`）、等价重构、实现选择、首次诊断由 Agent 自判。
 
-- SDD/spec-first；
-- TDD、局部失败证据或适合该风险的测试先行方式；
-- 至少一轮独立代码 review；
-- 有真实取舍的决策由 Agent 给出推荐、备选和理由，并落 ADR；
-- Web 关键路径优先 Playwright，其他项目推荐等价的边界验收；
-- 可重复的本地启动/部署、测试、构建和自证命令。
+## 最小落盘（RULE-MIN-001）
 
-这些是推荐项，不是一刀切硬编码。对每项给出“采用 / 调整 / 不适用 + 理由”，不要静默跳过。用最小工程 canary 干跑 `修改 → 验证 → 本地部署/运行 → 自证`，确认 Agent 能独立闭环；canary 可以只是骨架或探针，不要求提前实现产品功能。
-
-### 验证节奏：逐级放大
-
-- **迭代中**：只跑改动附近的单元、类型、lint 或最短行为验证；形成一个连贯改动后再验证，不在每次编辑后全量回测。
-- **任务/批次结束**：运行受影响模块和最近边界的相关回归。
-- **Phase 退出**：运行该 Phase 涉及的集成测试、共享契约检查和关键路径 E2E。
-- **Goal 完成**：确保最后一次代码变化后已有完整测试、构建或发布级绿色证据；若上一层命令已经等同或覆盖最终门控，直接复用，不重复运行。
-
-修改共享契约、schema、权限、安全、依赖、全局配置、并发、迁移或基础设施时，提前升级验证范围。若验证输入和代码未变化，可复用最近绿色证据；不要重复运行无法产生新信息的同一检查。
-
-### 3. Planning：Phase、Todo 与退出门控
-
-读取 `assets/templates/phase3-phase-planning.md`：
-
-1. 按端到端可验证增量划分 Phase，高风险和高不确定项前置。
-2. 细化为可独立执行的任务清单；每项关联 AC、依赖、局部验证、回归升级条件和完成信号。
-3. 为每个 Phase 写自动化退出门控，形成无环依赖和可并行任务。
-4. Agent 提交完整计划供人确认目标、范围、关键取舍和门控，并明确交接状态：只有计划完成时为 `Plan-ready`；环境反馈闭环也已实测时才为 `Auto-ready`。
-
-`Auto-ready` 计划经人集中确认后，代表 copilot → auto 的控制权移交，不代表逐文件审批。若用户只要求规划包或环境尚未闭环，交付 `Plan-ready` 及升级到 `Auto-ready` 的剩余条件，不假装已经可以长程自治。任务“影响区域”只用于估算和写冲突协调。
-
-### 4. Goal Execution：Auto 长程执行
-
-读取 `assets/templates/phase4-execution-protocol.md` 和 `phase5-acceptance-retro.md`。把已确认的 Todo、AC 和 Phase 门控作为一个完整 goal：
-
-- 自动领取依赖已满足的下一任务，实施并做局部验证；在任务、Phase 和 Goal 边界按层级扩大回归，然后继续；
-- 通过一个 Phase 的退出门控后进入下一 Phase，不等待例行批准；
-- 当前 goal 内所需仓库文件可直接修改，不做逐文件审批或白名单；
-- 实现发现规格错误时只暂停受影响路径，走 spec delta，再恢复执行；
-- Todo 全部完成后自动执行 AC 验收、一致性检查和必要复盘。
-
-只有目标/AC 必须改变、新外部权限、生产/真实数据、破坏性难恢复操作，且没有其他安全任务可继续时才请求用户。问题集中询问，不逐项打断。
-
-## 质量模型
-
-- 阶段 1 决定 Agent 是否理解正确的问题和产品。
-- 阶段 2 决定 Agent 能否独立验证、运行和自证。
-- 阶段 3 决定长程执行是否能稳定连续推进。
-- 阶段 4 负责兑现前三阶段的设计；若频繁需求争议、人工操作或返工，应回看对应前置阶段，而不是给 auto 增加更多提示词。
-
-## 最小落盘
-
-- spec：目标、非目标、模型、AC；
-- ADR：存在真实取舍的关键决策；
-- `NOTES.md`：当前进度、发现和局部阻塞；
-- checkpoint：跨会话/长程任务的结果与验证证据。
-
-不要复制同一状态到多套台账。单会话任务的最终验证摘要可以充当 checkpoint，版本控制提供普通文件差异。
+spec 记意图、ADR 记关键取舍、NOTES 记进度、checkpoint 记结果与证据。不为合规生产流程资产；无新知识记「无变更」。fast-track 不创建任何流程文件，最终对话摘要即 A0 报告。
 
 ## 完成判据
 
-- 承诺 AC 有可复现证据，最后一次代码变化后的完整/发布级门控通过或有等价绿色证据，人工体验验收被明确标出；
-- Todo 完成且所有 Phase 退出门控通过；
-- spec、实现、测试和关键 ADR 一致；
-- 未解决事项有明确处置；只沉淀真正可复用的经验。
+按生命周期状态机（`RULE-STATE-001`）如实报告，对照每条 AC 收集对应保证等级的证据（`RULE-GOAL-001`）：承诺 AC 有可定位证据，hard gate 由 A3 满足，人工验收显式标 J0/J1；spec/实现/测试/关键 ADR 一致；未完成项明确处置。自动 gate 过而人工 pending 报 `automated_verified`，不报 `accepted`。详见 `assets/templates/phase5-acceptance-retro.md`。

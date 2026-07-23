@@ -1,96 +1,74 @@
 # agent-sdlc-workflow
 
-双模式的 Agent 时代软件工程工作流：小任务 fast-track；完整项目由 Agent 主动引导 **准备 → 环境闭环 → Phase/Todo 规划 → Goal/Auto 长程执行**。
+双模式的 Agent 时代软件工程工作流：小任务走零落盘 fast-track；完整产品项目由 Agent 主动引导 **准备 → 环境闭环 → Phase/Todo 规划 → Goal/Auto 长程执行**。
 
-它提供方法和模板，不复制模型、版本控制、CI 或平台权限系统已经具备的能力。核心假设是：模型能够判断普通实现细节；文档只保存跨会话不可替代的意图、决策和证据。
+v2.0 在 v1.5 的方法论之上建立一条完整链：**Harness 能力探测 → 四维执行配置 → 与能力匹配的自主程度 → 机器捕获并绑定 revision 的证据 → 独立复核或外部硬门控 → 精确生命周期状态 → 再锚定、熔断与分层恢复 → E1–E12 真实验证**。它提供方法和模板，不复制模型、版本控制、CI 或平台权限系统已经具备的能力。
+
+> 当前版本 `2.0.0-rc.1`：语义与工件已就位；真实 Harness binding 的 dogfood 与 E1–E12 实测是稳定版 `2.0.0` 的发布门控，见 `evals/`。
+
+## 约束性质（先读这段）
+
+这是**行为编排协议，不是硬控制系统**。Skill 文字只能改变 Agent 行为倾向；权限隔离、CI 阻断、分支保护、生产审批、数据恢复、原子调度与独立证据作者由 Harness、CI、权限系统与版本控制承担。门控分三类：hard（A3 外部强制）/ evidence（A0–A2，绑定 revision）/ judgment（J0/J1 人签字）。
 
 ## 核心原则
 
-1. **Spec 是执行契约**：目标、非目标、假设和编号 AC 驱动实现与验证。
-2. **验证决定自主权**：反馈回路越可靠，Agent 越能自主执行。
-3. **目标内自主**：完成当前 goal 所需的仓库文件可直接修改，不逐文件审批、不维护白名单。
-4. **最小落盘**：spec 记意图，ADR 记关键决策，NOTES 记进度，checkpoint 记结果和证据。
-5. **少打扰**：只有目标/AC 变化、新外部权限、生产/真实数据或破坏性操作真正阻塞时才询问用户。
-6. **Agent 先推荐**：前三阶段由 Agent 调研、起草和解释取舍，人确认关键产品语义；不是让人从空白模板开始填。
-7. **分层验证**：局部检查保证反馈速度，Phase 回归保护受影响边界，Goal 门控保证最终完整性。
+1. **验证质量决定自主权**：自主程度由可用能力与证据保证等级决定，不由提示词长度决定；能力不足时降级，不用散文伪装能力。
+2. **四维正交**：规模（fast/project）、自主（copilot/auto）、风险（standard/guarded）、协作（single/multi）分别判定；AC 数量、用户要求 auto、多 Agent、单点高风险均不单独决定 Project。
+3. **证据分级**：A0 self-reported / A1 tool-captured / A2 independently-replayed / A3 externally-enforced；人工 J0/J1。Agent 自填字段标 self-reported，不能升级保证等级。
+4. **状态诚实**：生命周期状态机区分实现完成、自动验证通过、人工待验收、已验收、已发布、已关闭；不混报。
+5. **Spec 是执行契约**：目标、非目标、假设和编号 AC 驱动实现与验证。
+6. **最小落盘**：spec 记意图、ADR 记关键决策、NOTES 记进度、checkpoint 记结果与证据；不为合规生产流程资产。
+7. **少打扰**：只有目标/AC 变化、新外部权限、生产/真实数据或破坏性操作真正阻塞时才合并询问。
+8. **Agent 先推荐**：前三阶段由 Agent 调研、起草和解释取舍，人确认关键产品语义。
+9. **分层验证**：局部 → 受影响 → Phase → Goal；输入未变复用绿色证据。
 
 ## 两种模式
 
-- **Fast-track**：从用户请求提炼 AC，做最小计划、实现并验证；适合单次修复、小功能和临时原型。
-- **Project Mode**：适合完整产品、多里程碑、长期跨会话、多 Agent 或需要先 copilot 再 auto 的项目。
+- **Fast-track**：单一可验证增量、单会话可完成。直接提炼 AC，做最小计划与局部验证；**零落盘**，最终对话摘要即 A0 报告。风险升高只切 guarded 维度，不膨胀为完整 Project。
+- **Project Mode**：完整产品、多里程碑、长期跨会话、多 Agent 或用户要求长程 auto。按下述四阶段主动引导。
 
 ### Project Mode 四阶段
 
-| 阶段 | 协作模式 | Agent 主动引导内容 |
+| 阶段 | 协作 | Agent 主动引导内容 |
 |---|---|---|
 | 1 准备 | copilot | 需求深挖、边界、产品定位、对象/行为/事件/关系/规则五维模型、原型迭代与体验确认 |
-| 2 环境 | copilot | 推荐并落实 SDD、风险驱动测试、分层回归、Review、ADR、关键路径验收与本地闭环 |
-| 3 规划 | copilot | 可验证 Phase、完整 Todo、AC 映射、依赖 DAG、Phase 退出门控；人确认后移交 auto |
-| 4 执行 | auto | 将整个计划作为 goal 连续执行，通过门控后自动推进，最后完成 AC 验收与沉淀 |
+| 2 环境 | copilot | SDD、风险驱动测试、分层回归、Review、ADR、**能力协商**、关键路径验收与本地闭环 |
+| 3 规划 | copilot | 可验证 Phase、完整 Todo、AC 映射、依赖 DAG、Phase 退出门控；声明 Plan-ready/Auto-ready |
+| 4 执行 | auto | 将计划作为 goal 连续执行，Phase 门控后再锚定，熔断入 auto_paused，三类恢复分离，最后按生命周期状态验收 |
 
-工程实践不是一刀切硬编码。Agent 应逐项给出推荐；用户可以采用、调整或标为不适用。已有等价能力直接复用，不机械补流程；不适用项简述理由。
+**Auto-ready 以能力为前提**：`evidence_capture` 至少为 tool（A1）；guarded 需 blocking-permission 与恢复 gate；multi 需 atomic-claim。能力不足时降级，不假装可长程自治。
 
-### 验证节奏
+### 验证节奏与保证等级
 
 ```text
-连贯改动 → 局部检查
-任务/批次 → 受影响回归
-Phase → 相关集成、共享契约与关键路径 E2E
-Goal → 确保最后一次代码变化后有完整/发布级绿色证据
+连贯改动 → 局部检查        任务/批次 → 受影响回归
+Phase → 相关集成/契约/E2E   Goal → 最后一次代码变更后的完整/发布级绿色证据
 ```
 
-普通编辑后不反复运行全量套件。只有共享契约、schema、权限、安全、依赖、全局配置、并发、迁移或基础设施变化，以及局部失败显示影响面扩大时，才提前升级回归范围。代码和验证输入未变化时，可以复用最近绿色证据；若受影响回归本身已经等同或覆盖完整套件，它同时满足最终门控。
+Goal 最低保证：fast+standard 可 A0（须明示 self-reported）；project+auto 关键 gate ≥ A1；guarded 关键行为 ≥ A2 外加 blocking permission；hard gate 须 A3；人工验收须 J1。
 
-原型选择能回答当前不确定性的最低成本形态，不默认开发可运行 UI。规划完成但环境尚未实测时标记 `Plan-ready`；只有反馈闭环与工程 canary 已跑通才标记 `Auto-ready`，避免过早移交长程执行。
+## Harness 能力接口
 
-内部模板仍使用六个细分视角：原始阶段 1 对应规格；阶段 2 对应宪章+环境闭环；阶段 3 对应规划；阶段 4 对应执行+验收。
-
-单会话小任务和临时原型不运行脚手架、不强制创建 spec/plan/checkpoint 文件；用户请求、代码与最终验证摘要已经足够。不要为了证明遵守流程而生产流程资产。
+v2.0 定义三个必需能力：`evidence-capture`、`atomic-claim`、`blocking-permission`，两个推荐能力：`independent-verify`、`isolated-workspace`。主规则只定义能力接口，不写死平台 API；具体落地见 `agent-sdlc-workflow/references/bindings/`（`generic.md` 为降级 fallback，`claude-code.md` 为已设计 binding）。binding 不可用时按能力降级，不假装成功。
 
 ## 文件范围与用户打扰
 
-任务卡可写“影响区域”，帮助估算工作量和避免多 Agent 写冲突，但它不是权限白名单。Agent 发现漏列文件时直接修改，并在 checkpoint 概括重要影响；Git 已经保留完整文件差异，无需再维护逐文件台账。
+任务卡「影响区域」用于估算工作量与协调多 Agent 写冲突，**不是权限白名单**。Agent 发现漏列文件时直接修改，并在 checkpoint 概括重要影响；Git 已保留完整差异。平台权限、仓库保护、CI 和部署系统继续承担硬安全边界。
 
-只有以下情况既需要用户决定、又没有其他安全工作可继续时才询问：
-
-- 不同解释会改变用户价值、非目标或 AC；
-- 需要新外部权限、付费服务、生产或真实数据操作；
-- 操作破坏性、难恢复或超出已授权工作区。
-
-平台权限、仓库保护、CI 和部署系统继续承担硬安全边界。本 skill 不尝试用文件名规则复制它们。
+只有以下情况既需要用户决定、又没有其他安全工作可继续时才合并询问：不同解释会改变用户价值/非目标/AC；需要新外部权限、付费服务、生产或真实数据操作；操作破坏性、难恢复或超出已授权工作区。
 
 ## 初始化
 
 ```bash
-python agent-sdlc-workflow/scripts/init_project.py ./my-project --dry-run
-python agent-sdlc-workflow/scripts/init_project.py ./my-project
+python <本 skill 目录>/scripts/init_project.py ./my-project --dry-run
+python <本 skill 目录>/scripts/init_project.py ./my-project
 ```
 
-脚本幂等：已有文件默认跳过。`--force` 会先备份到项目内 `.agent-sdlc-backups/` 再覆盖。
-
-生成结构：
-
-```text
-项目根/
-├── CONSTITUTION.md
-├── AGENTS.md
-├── NOTES.md
-├── specs/
-│   ├── TEMPLATE-spec.md
-│   └── changes/TEMPLATE-change.md
-├── plans/
-│   ├── env-gates-checklist.md
-│   ├── TEMPLATE-phase-plan.md
-│   ├── execution-protocol.md
-│   ├── TEMPLATE-acceptance-retro.md
-│   └── logs/TEMPLATE-checkpoint.md
-├── docs/adr/TEMPLATE.md
-└── tests/
-```
+脚本幂等：已有文件默认跳过；会在项目 `AGENTS.md` 渲染从 `references/core-rules.md` 投影的受管规则区块（ruleset/hash）。若项目已有未受管的 `AGENTS.md`，**不覆盖、不追加**，改为生成 `AGENTS.agent-sdlc.md` 供合并，且此前项目只能是 Plan-ready。`--force` 会先备份到 `.agent-sdlc-backups/` 再覆盖 skill 拥有的文件——它**不是迁移器**，见 `MIGRATION-v1.5-to-v2.0.md`。
 
 ## 安装
 
-`agent-sdlc-workflow.skill` 是可直接导入的打包文件。也可把 `agent-sdlc-workflow/` 复制到工具的用户或项目 skills 目录：
+`agent-sdlc-workflow.skill` 是由 `scripts/package_skill.py` 生成的可导入打包文件（allowlist + `--check` 一致性）。也可把 `agent-sdlc-workflow/` 复制到工具的用户或项目 skills 目录：
 
 | 工具 | 常用目录 | 显式调用 |
 |---|---|---|
@@ -104,19 +82,24 @@ python agent-sdlc-workflow/scripts/init_project.py ./my-project
 
 ```text
 agent-sdlc-workflow/
-├── SKILL.md
+├── SKILL.md                 # 触发、四维路由、读取顺序（常驻入口，保持短）
+├── VERSION
 ├── agents/openai.yaml
-├── scripts/init_project.py
-└── assets/templates/
-    ├── phase0-constitution.md
-    ├── phase1-spec-modeling.md
-    ├── phase2-env-gates.md
-    ├── phase3-phase-planning.md
-    ├── phase4-execution-protocol.md
-    ├── phase5-acceptance-retro.md
-    ├── TEMPLATE-spec-change.md
-    ├── TEMPLATE-adr.md
-    └── TEMPLATE-checkpoint.md
+├── references/              # canonical 创作源（按需读取）
+│   ├── core-rules.md        # 全部规则唯一创作源（rule ID）
+│   ├── evidence-assurance.md
+│   ├── capability-contract.md
+│   ├── recovery-model.md
+│   └── bindings/
+│       ├── generic.md
+│       └── claude-code.md
+├── assets/templates/        # 九个阶段/资产模板（rule ID 锚点 + 行动点摘要）
+└── scripts/init_project.py
 ```
 
-版本：v1.5
+## 评测与迁移
+
+- `evals/`：E1–E12 场景矩阵与关键指标；真实 fast-track、跨会话 Project Mode、Harness binding dogfood 与故障注入是稳定版发布门控。
+- `MIGRATION-v1.5-to-v2.0.md`：人工迁移指南（不使用 `--force`，不自动改写历史产物）。
+
+版本：v2.0（`2.0.0-rc.1`）

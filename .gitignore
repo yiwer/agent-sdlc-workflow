@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# IDE
+.idea/
+.vscode/
+
+# init_project.py 备份与临时文件
+.agent-sdlc-backups/
+*.tmp
+
+# 注意：agent-sdlc-workflow.skill 是交付物，需提交并由 CI --check 与源码对齐，勿忽略
