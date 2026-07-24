@@ -1,10 +1,24 @@
 # Binding：claude-code（Claude Code 能力绑定）
 
 - 适用：Claude Code（CLI），含 hooks / 权限系统 / 子 Agent / worktree / skills
-- 状态：设计完成；真实 dogfood 为 v2.0 稳定版发布门控，RC 阶段标注「未实测」
-- 验证日期：2026-07-23（设计）
+- 状态：设计完成并已在本仓库落地（`.claude/settings.json` + `.claude/hooks/`）；真实 dogfood 数据为 v2.0 稳定版发布门控
+- 验证日期：2026-07-23（设计 + 本仓库接入）
 
 > 诚实声明：以下映射基于 Claude Code 公开能力设计，**尚未经真实项目 dogfood 验证**。在 dogfood 通过前，按本 binding 运行的项目应自降一级保证并标注。
+
+## 本仓库已落地配置（dogfood 进行中）
+
+本仓库已将该 binding 实际接入：
+
+- `.claude/settings.json`
+  - `permissions.deny`：`git reset --hard`、`git push --force`/`-f`、`git clean -fd(x)`、绝对路径/家目录 `rm -rf` 等破坏性操作（blocking-permission）；
+  - `permissions.ask`：`--force-with-lease`、`branch -D`、`checkout -- .`、`restore .`、`rebase` 等需确认操作；
+  - `hooks.PostToolUse`（匹配 Bash，`async` 非阻断）：调用 `.claude/hooks/capture_evidence.py`。
+- `.claude/hooks/capture_evidence.py`：仅对验证类命令（test/build/lint/typecheck/e2e）将 `{命令, revision, dirty_diff_hash, exit_code, result, 输出摘要, 时间, session}` 追加写入 `plans/logs/evidence.jsonl`，标 `assurance: A1 / provenance: tool-captured / captured_by: claude-code:PostToolUse`。恒退出 0，不阻断会话。
+
+约束：本地由 Agent 触发的命令至多 A1，不是 A2/A3；A2 需 `code-review`/子 Agent/CI 在同一 revision 复跑，A3 需外部受保护系统真实阻断。证据日志为本地会话数据，已在 `.gitignore` 忽略；人工 checkpoint（`.md`）照常提交。项目可在 `deny` 中追加自身的 deploy/migrate/生产命令前缀（权限规则为前缀匹配）。
+
+> 注：新建的 `.claude/` 需 `/hooks` 重载或重启后才被监视；重载后任意测试/构建命令即写入证据日志。
 
 ## 能力映射
 

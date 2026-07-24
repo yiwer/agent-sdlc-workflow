@@ -10,4 +10,7 @@ __pycache__/
 .agent-sdlc-backups/
 *.tmp
 
+# 机器捕获的本地证据日志（A1，会话相关、持续增长，不提交；人工 checkpoint *.md 可提交）
+plans/logs/evidence.jsonl
+
 # 注意：agent-sdlc-workflow.skill 是交付物，需提交并由 CI --check 与源码对齐，勿忽略
