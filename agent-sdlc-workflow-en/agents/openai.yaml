@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent SDLC Workflow (English)"
+  short_description: "Evidence-driven Agent SDLC workflow in English"
+  default_prompt: "Use $agent-sdlc-workflow-en to guide this project with explicit capabilities, evidence gates, and honest lifecycle states; on Windows PowerShell 5.1, read bundled files with Get-Content -Raw -Encoding UTF8."

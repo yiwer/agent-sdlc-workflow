@@ -68,15 +68,20 @@ python <本 skill 目录>/scripts/init_project.py ./my-project
 
 ## 安装
 
-`agent-sdlc-workflow.skill` 是由 `scripts/package_skill.py` 生成的可导入打包文件（allowlist + `--check` 一致性）。也可把 `agent-sdlc-workflow/` 复制到工具的用户或项目 skills 目录：
+`agent-sdlc-workflow.skill` 是中文版可导入包；`agent-sdlc-workflow-en.skill` 是规则 ID、行为语义和目录结构对齐的全英文适配版。两者都由 `scripts/package_skill.py` 生成并支持 allowlist + `--check` 一致性校验。也可把对应目录复制到工具的用户或项目 skills 目录：
+
+```bash
+python scripts/package_skill.py
+python scripts/package_skill.py --skill-dir agent-sdlc-workflow-en -o agent-sdlc-workflow-en.skill
+```
 
 打包内文本统一为 UTF-8（无 BOM）。Windows PowerShell 5.1 读取时须显式使用 `Get-Content -Raw -Encoding UTF8`；PowerShell 7 不需要这一兼容参数。
 
-| 工具 | 常用目录 | 显式调用 |
-|---|---|---|
-| Codex | `~/.codex/skills/` 或 `~/.agents/skills/` | `$agent-sdlc-workflow` |
-| Claude Code | `~/.claude/skills/` 或 `.agents/skills/` | `/agent-sdlc-workflow` |
-| Kimi Code | `~/.kimi/skills/` 或 `.agents/skills/` | `/skill:agent-sdlc-workflow` |
+| 工具 | 常用目录 | 中文版调用 | 英文版调用 |
+|---|---|---|---|
+| Codex | `~/.codex/skills/` 或 `~/.agents/skills/` | `$agent-sdlc-workflow` | `$agent-sdlc-workflow-en` |
+| Claude Code | `~/.claude/skills/` 或 `.agents/skills/` | `/agent-sdlc-workflow` | `/agent-sdlc-workflow-en` |
+| Kimi Code | `~/.kimi/skills/` 或 `.agents/skills/` | `/skill:agent-sdlc-workflow` | `/skill:agent-sdlc-workflow-en` |
 
 普通单次修复、代码解释或单项 TDD 不应自动触发完整工作流。
 
@@ -98,6 +103,8 @@ agent-sdlc-workflow/
 ├── assets/templates/        # 九个阶段/资产模板（rule ID 锚点 + 行动点摘要）
 └── scripts/init_project.py
 ```
+
+`agent-sdlc-workflow-en/` 保持相同运行时布局；其 `SKILL.md`、references、bindings、九个模板、初始化脚本输出和 UI 元数据均为英文。两个版本共享稳定 rule ID，便于跨语言审计和对照。
 
 ## 评测与迁移
 

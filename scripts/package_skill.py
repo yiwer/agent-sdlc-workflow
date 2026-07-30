@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import sys
 import zipfile
 from pathlib import Path
@@ -22,8 +23,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SKILL_DIR = REPO_ROOT / "agent-sdlc-workflow"
 DEFAULT_PACKAGE = REPO_ROOT / "agent-sdlc-workflow.skill"
-PREFIX = "agent-sdlc-workflow"
 FIXED_DATE = (1980, 1, 1, 0, 0, 0)
+SKILL_NAME_RE = re.compile(r"^name:\s*([a-z0-9-]+)\s*$", re.MULTILINE)
 
 # Allowlist globs relative to the skill dir. Anything not matched is excluded
 # (no caches, IDE files, tests, evals, fixtures, or the legacy template pack).
@@ -65,11 +66,26 @@ def _sha256_file(path: Path) -> str:
     return _sha256_bytes(path.read_bytes())
 
 
-def build(skill_dir: Path, package_path: Path) -> tuple[dict[str, Path], str]:
+def skill_name(skill_dir: Path) -> str:
+    skill_md = skill_dir / "SKILL.md"
+    text = skill_md.read_text(encoding="utf-8")
+    frontmatter = text.split("---", 2)
+    if len(frontmatter) < 3:
+        raise RuntimeError(f"SKILL.md 缺少 YAML frontmatter: {skill_md}")
+    match = SKILL_NAME_RE.search(frontmatter[1])
+    if not match:
+        raise RuntimeError(f"SKILL.md 缺少合法 name: {skill_md}")
+    return match.group(1)
+
+
+def build(
+    skill_dir: Path, package_path: Path
+) -> tuple[dict[str, Path], str, str]:
     files = collect_source_files(skill_dir)
     missing = [rel for rel in REQUIRED if rel not in files]
     if missing:
         raise RuntimeError("缺少必需文件: " + ", ".join(missing))
+    prefix = skill_name(skill_dir)
     version = (skill_dir / "VERSION").read_text(encoding="utf-8").strip()
     if not version:
         raise RuntimeError("VERSION 为空")
@@ -77,11 +93,11 @@ def build(skill_dir: Path, package_path: Path) -> tuple[dict[str, Path], str]:
     package_path.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(package_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
         for rel, path in files.items():
-            info = zipfile.ZipInfo(f"{PREFIX}/{rel}", date_time=FIXED_DATE)
+            info = zipfile.ZipInfo(f"{prefix}/{rel}", date_time=FIXED_DATE)
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o644 << 16
             zf.writestr(info, path.read_bytes())
-    return files, version
+    return files, version, prefix
 
 
 def package_entries(package_path: Path) -> dict[str, str]:
@@ -97,8 +113,9 @@ def package_entries(package_path: Path) -> dict[str, str]:
 def check(skill_dir: Path, package_path: Path) -> tuple[bool, list[str]]:
     if not package_path.exists():
         return False, [f"包不存在: {package_path}"]
+    prefix = skill_name(skill_dir)
     expected = {
-        f"{PREFIX}/{rel}": _sha256_file(path)
+        f"{prefix}/{rel}": _sha256_file(path)
         for rel, path in collect_source_files(skill_dir).items()
     }
     actual = package_entries(package_path)
@@ -125,24 +142,24 @@ def main() -> int:
     skill_dir = Path(args.skill_dir).resolve()
     package_path = Path(args.output).resolve()
 
-    if args.check:
-        ok, problems = check(skill_dir, package_path)
-        if ok:
-            print(f"包与源码一致: {package_path}")
-            return 0
-        for line in problems:
-            print(f"  ✗ {line}")
-        print(f"包与源码不一致（{len(problems)} 项）")
-        return 1
-
     try:
-        files, version = build(skill_dir, package_path)
+        if args.check:
+            ok, problems = check(skill_dir, package_path)
+            if ok:
+                print(f"包与源码一致: {package_path}")
+                return 0
+            for line in problems:
+                print(f"  ✗ {line}")
+            print(f"包与源码不一致（{len(problems)} 项）")
+            return 1
+
+        files, version, prefix = build(skill_dir, package_path)
     except RuntimeError as exc:
         print(f"错误: {exc}", file=sys.stderr)
         return 2
     print(f"已打包 v{version}: {package_path}（{len(files)} 个文件）")
     for rel in files:
-        print(f"  + {PREFIX}/{rel}")
+        print(f"  + {prefix}/{rel}")
     return 0
 
 

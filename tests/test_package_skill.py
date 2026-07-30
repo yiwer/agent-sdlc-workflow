@@ -113,6 +113,19 @@ class PackageSkillTest(unittest.TestCase):
         result = self.build()
         self.assertNotEqual(result.returncode, 0)
 
+    def test_invalid_skill_name_fails_cleanly_in_check_mode(self) -> None:
+        self.assertEqual(self.build().returncode, 0)
+        skill_md = self.skill / "SKILL.md"
+        text = skill_md.read_text(encoding="utf-8")
+        skill_md.write_text(
+            text.replace("name: agent-sdlc-workflow", "name: INVALID_NAME", 1),
+            encoding="utf-8",
+        )
+        result = self.check()
+        combined = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 2, combined)
+        self.assertNotIn(b"Traceback", combined)
+
 
 if __name__ == "__main__":
     unittest.main()
