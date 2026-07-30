@@ -1,4 +1,4 @@
 interface:
   display_name: "Agent SDLC Workflow"
   short_description: "四维执行配置、能力契约、A0–A3 证据保证与生命周期状态机的软件工程工作流"
-  default_prompt: "Use $agent-sdlc-workflow to guide this project: pick the four-dimension config, negotiate harness capabilities, capture revision-bound evidence, and report honest lifecycle states."
+  default_prompt: "Use $agent-sdlc-workflow to guide this project: pick the four-dimension config, negotiate harness capabilities, capture revision-bound evidence, and report honest lifecycle states. On Windows PowerShell 5.1, read every bundled text file with Get-Content -Raw -Encoding UTF8."

@@ -40,6 +40,13 @@ ALLOWLIST = [
 REQUIRED = ["SKILL.md", "VERSION", "references/core-rules.md"]
 
 
+def configure_utf8_output() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure:
+            reconfigure(encoding="utf-8")
+
+
 def collect_source_files(skill_dir: Path) -> dict[str, Path]:
     files: dict[str, Path] = {}
     for pattern in ALLOWLIST:
@@ -108,6 +115,7 @@ def check(skill_dir: Path, package_path: Path) -> tuple[bool, list[str]]:
 
 
 def main() -> int:
+    configure_utf8_output()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skill-dir", default=str(DEFAULT_SKILL_DIR))
     parser.add_argument("-o", "--output", default=str(DEFAULT_PACKAGE))

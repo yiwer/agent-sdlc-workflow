@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import sys
@@ -76,7 +77,36 @@ class PackageSkillTest(unittest.TestCase):
         self.assertEqual(self.check().returncode, 0)
         skill_md = self.skill / "SKILL.md"
         skill_md.write_text(skill_md.read_text(encoding="utf-8") + "\n# tamper\n", encoding="utf-8")
-        self.assertNotEqual(self.check().returncode, 0)
+        result = self.check()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+
+    def test_check_failure_reports_utf8_without_traceback_under_gbk(self) -> None:
+        self.assertEqual(self.build().returncode, 0)
+        skill_md = self.skill / "SKILL.md"
+        skill_md.write_text(
+            skill_md.read_text(encoding="utf-8") + "\n# tamper\n",
+            encoding="utf-8",
+        )
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "gbk"
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(PKG),
+                "--skill-dir",
+                str(self.skill),
+                "-o",
+                str(self.pkg),
+                "--check",
+            ],
+            capture_output=True,
+            check=False,
+            env=env,
+        )
+        combined = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 1, combined)
+        self.assertNotIn(b"Traceback", combined)
+        self.assertIn("内容不一致".encode("utf-8"), result.stdout)
 
     def test_missing_required_fails_build(self) -> None:
         (self.skill / "VERSION").unlink()

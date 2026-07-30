@@ -70,6 +70,8 @@ python <本 skill 目录>/scripts/init_project.py ./my-project
 
 `agent-sdlc-workflow.skill` 是由 `scripts/package_skill.py` 生成的可导入打包文件（allowlist + `--check` 一致性）。也可把 `agent-sdlc-workflow/` 复制到工具的用户或项目 skills 目录：
 
+打包内文本统一为 UTF-8（无 BOM）。Windows PowerShell 5.1 读取时须显式使用 `Get-Content -Raw -Encoding UTF8`；PowerShell 7 不需要这一兼容参数。
+
 | 工具 | 常用目录 | 显式调用 |
 |---|---|---|
 | Codex | `~/.codex/skills/` 或 `~/.agents/skills/` | `$agent-sdlc-workflow` |

@@ -79,6 +79,14 @@ class ContentContractTest(unittest.TestCase):
         self.assertIn("零落盘", text)
         self.assertIn("RULE-FAST-001", text)
 
+    def test_windows_powershell_utf8_bootstrap_is_catalog_visible(self) -> None:
+        skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        openai = (SKILL_DIR / "agents" / "openai.yaml").read_text(encoding="utf-8")
+        frontmatter = skill.split("---", 2)[1]
+        for catalog_text in (frontmatter, openai):
+            self.assertIn("PowerShell 5.1", catalog_text)
+            self.assertIn("-Encoding UTF8", catalog_text)
+
     def test_templates_have_no_external_install_runtime_dependency(self) -> None:
         templates = list((SKILL_DIR / "assets" / "templates").glob("*.md"))
         self.assertGreater(len(templates), 0)

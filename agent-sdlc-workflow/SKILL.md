@@ -1,6 +1,6 @@
 ---
 name: agent-sdlc-workflow
-description: 用双模式 Agent SDLC 组织软件开发。小任务走零落盘 fast-track；完整产品项目由 Agent 主动引导四阶段 Project Mode。以四维正交配置（规模/自主/风险/并发）取代二元路由，用 Harness 能力契约决定可达自主程度，用 A0–A3/J0–J1 证据保证等级区分自证、机器捕获、独立复核与外部硬门控，并以生命周期状态机诚实报告进度。覆盖需求深挖、五维建模与原型、SDD/风险驱动测试/Review/ADR、Phase/Todo/退出门控、再锚定/熔断/分层恢复与 Goal/Auto 长程执行。用于新产品、长期跨会话、多里程碑或多 Agent 项目；普通一次性修复不自动触发完整流程。
+description: Windows PowerShell 5.1 must read bundled files with Get-Content -Raw -Encoding UTF8. 用双模式 Agent SDLC 组织软件开发。小任务走零落盘 fast-track；完整产品项目由 Agent 主动引导四阶段 Project Mode。以四维正交配置（规模/自主/风险/并发）取代二元路由，用 Harness 能力契约决定可达自主程度，用 A0–A3/J0–J1 证据保证等级区分自证、机器捕获、独立复核与外部硬门控，并以生命周期状态机诚实报告进度。覆盖需求深挖、五维建模与原型、SDD/风险驱动测试/Review/ADR、Phase/Todo/退出门控、再锚定/熔断/分层恢复与 Goal/Auto 长程执行。用于新产品、长期跨会话、多里程碑或多 Agent 项目；普通一次性修复不自动触发完整流程。
 ---
 
 # Agent SDLC
@@ -35,6 +35,7 @@ description: 用双模式 Agent SDLC 组织软件开发。小任务走零落盘 
 
 ## 读取顺序
 
+- 本 skill 的文本文件统一使用 UTF-8（无 BOM）；Windows PowerShell 5.1 必须用 `Get-Content -Raw -Encoding UTF8` 读取。
 - 路由与四阶段编排：本文件。
 - 完整行为规则（唯一创作源）：`references/core-rules.md`。
 - 证据保证等级与记录：`references/evidence-assurance.md`。
